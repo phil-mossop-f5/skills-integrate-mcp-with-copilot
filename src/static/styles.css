@@ -50,6 +50,34 @@ section {
   max-width: 500px;
 }
 
+.account-panel {
+  max-width: 1030px;
+}
+
+#auth-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+#auth-switch button[aria-pressed="true"] {
+  background-color: #006b3f;
+}
+
+#profile-panel {
+  margin-top: 12px;
+}
+
+#account-summary {
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+
+#auth-message {
+  margin-top: 12px;
+  padding: 8px;
+}
+
 section h3 {
   margin-bottom: 20px;
   padding-bottom: 10px;
@@ -164,6 +192,11 @@ button:hover {
   background-color: #3949ab;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .message {
   margin-top: 20px;
   padding: 10px;
@@ -190,6 +223,20 @@ button:hover {
 
 .hidden {
   display: none;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+  }
+
+  main {
+    gap: 16px;
+  }
+
+  section {
+    padding: 16px;
+  }
 }
 
 footer {

@@ -13,6 +13,64 @@
     </header>
 
     <main>
+      <section id="account-container" class="account-panel">
+        <h3>Student Account</h3>
+        <div id="auth-switch" role="group" aria-label="Account action">
+          <button type="button" id="show-login" aria-pressed="true">Sign In</button>
+          <button type="button" id="show-register" aria-pressed="false">Create Account</button>
+        </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">School Email:</label>
+            <input type="email" id="login-email" required autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" required autocomplete="current-password" />
+          </div>
+          <button type="submit">Sign In</button>
+        </form>
+        <form id="register-form" class="hidden">
+          <div class="form-group">
+            <label for="register-name">Full Name:</label>
+            <input type="text" id="register-name" required maxlength="100" autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label for="register-email">School Email:</label>
+            <input type="email" id="register-email" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="register-grade">Grade:</label>
+            <input type="text" id="register-grade" maxlength="30" />
+          </div>
+          <div class="form-group">
+            <label for="register-password">Password (12 characters minimum):</label>
+            <input type="password" id="register-password" required minlength="12" maxlength="128" autocomplete="new-password" />
+          </div>
+          <div class="form-group">
+            <label for="register-invite">School Invitation Code:</label>
+            <input type="password" id="register-invite" required autocomplete="off" />
+          </div>
+          <button type="submit">Create Account</button>
+        </form>
+        <div id="profile-panel" class="hidden">
+          <p id="account-summary"></p>
+          <form id="profile-form">
+            <div class="form-group">
+              <label for="profile-name">Full Name:</label>
+              <input type="text" id="profile-name" required maxlength="100" />
+            </div>
+            <div class="form-group">
+              <label for="profile-grade">Grade:</label>
+              <input type="text" id="profile-grade" maxlength="30" />
+            </div>
+            <button type="submit">Save Profile</button>
+            <button type="button" id="sign-out">Sign Out</button>
+          </form>
+        </div>
+        <div id="auth-message" class="hidden" role="status" aria-live="polite"></div>
+      </section>
+
       <section id="activities-container">
         <h3>Available Activities</h3>
         <div id="activities-list">
@@ -25,17 +83,13 @@
         <h3>Sign Up for an Activity</h3>
         <form id="signup-form">
           <div class="form-group">
-            <label for="email">Student Email:</label>
-            <input type="email" id="email" required placeholder="your-email@mergington.edu" />
-          </div>
-          <div class="form-group">
             <label for="activity">Select Activity:</label>
             <select id="activity" required>
               <option value="">-- Select an activity --</option>
               <!-- Activity options will be loaded here -->
             </select>
           </div>
-          <button type="submit">Sign Up</button>
+          <button type="submit" id="signup-submit" disabled>Sign Up</button>
         </form>
         <div id="message" class="hidden"></div>
       </section>
