@@ -2,7 +2,131 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitiesList = document.getElementById("activities-list");
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
+  const signupButton = document.getElementById("signup-submit");
   const messageDiv = document.getElementById("message");
+  const loginForm = document.getElementById("login-form");
+  const registerForm = document.getElementById("register-form");
+  const profileForm = document.getElementById("profile-form");
+  const profilePanel = document.getElementById("profile-panel");
+  const authMessage = document.getElementById("auth-message");
+  let accessToken = sessionStorage.getItem("accessToken");
+  let currentUser = null;
+
+  function apiFetch(url, options = {}) {
+    const headers = { ...options.headers };
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+    if (options.body) {
+      headers["Content-Type"] = "application/json";
+    }
+    return fetch(url, { ...options, headers });
+  }
+
+  function showAuthMessage(text, isError = false) {
+    authMessage.textContent = text;
+    authMessage.className = isError ? "error" : "success";
+  }
+
+  function setAuthenticatedUser(user) {
+    currentUser = user;
+    loginForm.classList.add("hidden");
+    registerForm.classList.add("hidden");
+    document.getElementById("auth-switch").classList.add("hidden");
+    profilePanel.classList.remove("hidden");
+    document.getElementById("account-summary").textContent =
+      `${user.name} · ${user.role.replaceAll("_", " ")}`;
+    document.getElementById("profile-name").value = user.name;
+    document.getElementById("profile-grade").value = user.grade || "";
+    signupButton.disabled = false;
+  }
+
+  function clearAuthentication() {
+    accessToken = null;
+    currentUser = null;
+    sessionStorage.removeItem("accessToken");
+    profilePanel.classList.add("hidden");
+    document.getElementById("auth-switch").classList.remove("hidden");
+    document.getElementById("show-login").click();
+    signupButton.disabled = true;
+  }
+
+  async function completeAuthentication(response) {
+    const result = await response.json();
+    if (!response.ok) {
+      showAuthMessage(result.detail || "Unable to sign in.", true);
+      return;
+    }
+    accessToken = result.access_token;
+    sessionStorage.setItem("accessToken", accessToken);
+    setAuthenticatedUser(result.user);
+    authMessage.className = "hidden";
+    fetchActivities();
+  }
+
+  document.getElementById("show-login").addEventListener("click", () => {
+    loginForm.classList.remove("hidden");
+    registerForm.classList.add("hidden");
+    document.getElementById("show-login").setAttribute("aria-pressed", "true");
+    document.getElementById("show-register").setAttribute("aria-pressed", "false");
+  });
+
+  document.getElementById("show-register").addEventListener("click", () => {
+    loginForm.classList.add("hidden");
+    registerForm.classList.remove("hidden");
+    document.getElementById("show-login").setAttribute("aria-pressed", "false");
+    document.getElementById("show-register").setAttribute("aria-pressed", "true");
+  });
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await completeAuthentication(apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        email: document.getElementById("login-email").value,
+        password: document.getElementById("login-password").value,
+      }),
+    }));
+  });
+
+  registerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await completeAuthentication(apiFetch("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: document.getElementById("register-email").value,
+        name: document.getElementById("register-name").value,
+        grade: document.getElementById("register-grade").value || null,
+        password: document.getElementById("register-password").value,
+        invite_code: document.getElementById("register-invite").value,
+      }),
+    }));
+  });
+
+  profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const response = await apiFetch(`/users/${encodeURIComponent(currentUser.email)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: document.getElementById("profile-name").value,
+        grade: document.getElementById("profile-grade").value || null,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      showAuthMessage(result.detail || "Unable to update profile.", true);
+      return;
+    }
+    setAuthenticatedUser(result);
+    showAuthMessage("Profile saved.");
+  });
+
+  document.getElementById("sign-out").addEventListener("click", async () => {
+    await apiFetch("/auth/logout", { method: "POST" });
+    clearAuthentication();
+    showAuthMessage("Signed out.");
+    fetchActivities();
+  });
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -12,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -22,6 +147,8 @@ document.addEventListener("DOMContentLoaded", () => {
           details.max_participants - details.participants.length;
 
         // Create participants HTML with delete icons instead of bullet points
+        const canManageOthers = currentUser &&
+          ["activity_manager", "administrator"].includes(currentUser.role);
         const participantsHTML =
           details.participants.length > 0
             ? `<div class="participants-section">
@@ -30,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                      `<li><span class="participant-email">${email}</span>${currentUser && (currentUser.email === email || canManageOthers) ? `<button class="delete-btn" aria-label="Unregister ${email}" data-activity="${name}" data-email="${email}">Remove</button>` : ""}</li>`
                   )
                   .join("")}
               </ul>
@@ -74,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = button.getAttribute("data-email");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/activities/${encodeURIComponent(
           activity
         )}/unregister?email=${encodeURIComponent(email)}`,
@@ -114,14 +241,13 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
     const activity = document.getElementById("activity").value;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/activities/${encodeURIComponent(
           activity
-        )}/signup?email=${encodeURIComponent(email)}`,
+        )}/signup`,
         {
           method: "POST",
         }
@@ -156,5 +282,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Initialize app
+  document.getElementById("show-login").click();
+  if (accessToken) {
+    apiFetch("/auth/me").then(async (response) => {
+      if (response.ok) {
+        setAuthenticatedUser(await response.json());
+      } else {
+        clearAuthentication();
+      }
+      fetchActivities();
+    });
+  }
   fetchActivities();
 });
